@@ -1,89 +1,275 @@
-[gd_scene load_steps=7 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://Duck.tscn" type="PackedScene" id=1]
-[ext_resource path="res://background.png" type="Texture" id=2]
 [ext_resource path="res://Scenes/ObstacleSpawner.tscn" type="PackedScene" id=3]
+[ext_resource path="res://MainMenu.tscn" type="PackedScene" id=4]
+[ext_resource path="res://sky2.png" type="Texture" id=5]
+[ext_resource path="res://bg.png" type="Texture" id=6]
 
 [sub_resource type="GDScript" id=3]
 script/source = "extends Node2D
 
 onready var duck = $Duck
-onready var point = $Obstacle
 
-# Declare member variables here. Examples:
-# var a = 2
-# var b = \"text\"
-
-
-# Called when the node enters the scene tree for the first time.
-func _ready():
-	pass # Replace with function body.
+var GameOverScreen = preload(\"res://GameOver.tscn\")
+var MainMenuScreen = preload(\"res://MainMenu.tscn\")
+var paused = false
+var main_menu = true
+var game_over = false
 
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-#func _process(delta):
-#	pass
+func _input(event):
+	if event is InputEventKey:
+		if event.pressed and game_over == true:
+			$GameOver.queue_free()
+			game_over = false
+			main_menu = true
+			
+			var main_menu = MainMenuScreen.instance()
+			add_child(main_menu)
+			
+			$ObstacleSpawner.despawn_all()
+			$ObstacleSpawner.is_moving = false
+			$Background.is_bg_moving = false
+			#$Duck.is_gravity = false
+			$Duck.angular_velocity = 0.0
+			
 
-func _physics_process(delta):
-	pass
+func _process(delta):
+
+	# Start the game
+	if Input.is_action_just_pressed(\"fly\") and main_menu == true:
+		get_node(\"Duck/Animation\").play(\"fly\", true)
+		$Duck.is_gravity = false
+		$StartTimer.start()
+		$Duck.global_position = Vector2(-50, 300)
+		main_menu = false
+		change_dynamics(true)
+		
+		
+	if Input.is_action_just_pressed(\"ui_cancel\") and main_menu == false and game_over == false:
+		
+		paused = not paused
+		change_dynamics(paused)
+			
+	# Detecting collisions
+	# Collided with tube
+	for tube in get_tree().get_nodes_in_group(\"tube\"):
+		if tube.get_overlapping_bodies():
+			
+			tube.monitoring = false
+			
+			game_over()
+	
+
+		
+		
+	if main_menu == false:
+		$MainMenu.rect_position -= Vector2(delta * 200.0, 0.0)
+		
+	if $StartTimer.time_left > 0.5:
+		$Duck.global_position += Vector2(delta * 100, 0.0)
+	
+		
+		
+func change_dynamics(flag):
+	$ObstacleSpawner.is_moving = flag
+	$Duck.is_moving = flag
+	
+	$Background.is_bg_moving = flag
+	
+	if flag == false:
+		get_node(\"Duck/Animation\").stop()
+	else:
+		get_node(\"Duck/Animation\").play(\"fly\")
+	
+
+	
+func game_over():
+
+	game_over = true
+	# Game Over
+	change_dynamics(false)
+	
+	# Game Over Screen
+	var go_scr = GameOverScreen.instance()
+	self.add_child(go_scr)
+	
+	# Duck death animation
+	death_animation()
+	
+
+func death_animation():
+	$Duck.ang_coef = 30
+	$Duck.is_gravity = false
+	
+	get_node(\"Duck/Animation\").play(\"died\", false)
+	
+	$DeathTimer.start(-1)
+	
+
+
+func _on_StartTimer_timeout():
+	$Duck.ang_coef = 1000
+	$Duck.is_gravity = true
+	
+func _on_DeathTimer_timeout():
+	$Duck.is_gravity = true
+	$Duck.set_linear_velocity(Vector2(200.1, -250.0))
 "
 
 [sub_resource type="GDScript" id=1]
 script/source = "extends ParallaxBackground
 
+var is_bg_moving = false
 
-# Declare member variables here. Examples:
-# var a = 2
-# var b = \"text\"
-
-
-# Called when the node enters the scene tree for the first time.
-func _ready():
-	pass # Replace with function body.
-
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
-	pass
+	
+	var multiplier = 1
+	
+	if is_bg_moving:
+		multiplier = 10
+	
+	# Mountains
+	self.get_child(0).motion_offset.x -= delta * 1 * multiplier
+	
+	# Sky1
+	self.get_child(1).motion_offset.x -= delta * 8 * multiplier
+	
+	#Sky2
+	self.get_child(2).motion_offset.x -= delta * 12 * multiplier
+		
+
 "
 
-[sub_resource type="GDScript" id=2]
-script/source = "extends ParallaxLayer
+[sub_resource type="StreamTexture" id=6]
+flags = 4
+load_path = "res://.import/sky1.png-0de6783e8d33887a24f1bd3aee7375da.stex"
 
+[sub_resource type="GDScript" id=7]
+script/source = "extends Label
 
-# Declare member variables here. Examples:
-# var a = 2
-# var b = \"text\"
+enum STAGE{
+	record,
+	counting
+} 
 
+var stage = STAGE.record
 
-# Called when the node enters the scene tree for the first time.
+var score = 0
+
+var record = 0
+
+func start_counting():
+	stage = STAGE.counting
+	score = 0
+	
+func show_record():
+	stage = STAGE.record
+	self.text = (\"score = \" + String(record))
+
 func _ready():
-	pass # Replace with function body.
+	
+	var file = File.new()
+	file.open(\"user://record.txt\", File.READ)
+	var content = file.get_as_text()
+	
+	record = int(content)
+	file.close()
+	
+func write_record():
+	var file = File.new()
+	file.open(\"user://record.txt\", File.WRITE)
+	file.store_string(String(record))
+	file.close()
+	
+	
+func update_counting():
+	
+	self.text = (\"score = \" + String(score))
 
+	if score > record: 
+		record = score
+		write_record()
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
+func detect_collision():
+		# Collided with point
+	
+	for point in get_tree().get_nodes_in_group(\"point\"):
+
+		if point.get_overlapping_bodies():
+			
+			point.monitoring = false
+			score += 1
+			
+	
 func _process(delta):
-	self.motion_offset.x -= delta * 100
+	if stage == STAGE.counting:
+		detect_collision()
+		update_counting()
+	if stage == STAGE.record:
+		detect_collision()
+		update_counting()
+		
+		
 "
 
 [node name="Root" type="Node2D"]
 script = SubResource( 3 )
 
 [node name="Duck" parent="." instance=ExtResource( 1 )]
-position = Vector2( 200, 100 )
-gravity = 500.0
-jump = 300.0
+position = Vector2( -50, 300 )
+z_index = 4
+gravity = 800.0
 
 [node name="ObstacleSpawner" parent="." instance=ExtResource( 3 )]
 
 [node name="Background" type="ParallaxBackground" parent="."]
 script = SubResource( 1 )
 
-[node name="ParallaxLayer" type="ParallaxLayer" parent="Background"]
-motion_mirroring = Vector2( 1150, 0 )
-script = SubResource( 2 )
+[node name="Bg" type="ParallaxLayer" parent="Background"]
+motion_mirroring = Vector2( 1030, 0 )
 
-[node name="Sprite" type="Sprite" parent="Background/ParallaxLayer"]
+[node name="Sprite" type="Sprite" parent="Background/Bg"]
+position = Vector2( 515, 251 )
+scale = Vector2( 2.06, 2.06 )
+texture = ExtResource( 6 )
+
+[node name="Sky1" type="ParallaxLayer" parent="Background"]
+motion_mirroring = Vector2( 2500, 0 )
+
+[node name="Sprite" type="Sprite" parent="Background/Sky1"]
 position = Vector2( 100, 300 )
 scale = Vector2( 3, 3 )
-texture = ExtResource( 2 )
+texture = SubResource( 6 )
+
+[node name="Sky2" type="ParallaxLayer" parent="Background"]
+motion_mirroring = Vector2( 2000, 0 )
+
+[node name="Sprite" type="Sprite" parent="Background/Sky2"]
+position = Vector2( 800, 304.25 )
+scale = Vector2( 3, 3 )
+texture = ExtResource( 5 )
+
+[node name="MainMenu" parent="." instance=ExtResource( 4 )]
+
+[node name="PauseTimer" type="Timer" parent="."]
+one_shot = true
+
+[node name="StartTimer" type="Timer" parent="."]
+wait_time = 2.096
+one_shot = true
+
+[node name="DeathTimer" type="Timer" parent="."]
+one_shot = true
+
+[node name="Score" type="Label" parent="."]
+margin_left = 44.0
+margin_top = 53.0
+margin_right = 84.0
+margin_bottom = 67.0
+script = SubResource( 7 )
+
+[connection signal="body_entered" from="Duck" to="." method="_on_Duck_body_entered"]
+[connection signal="timeout" from="StartTimer" to="." method="_on_StartTimer_timeout"]
+[connection signal="timeout" from="DeathTimer" to="." method="_on_DeathTimer_timeout"]

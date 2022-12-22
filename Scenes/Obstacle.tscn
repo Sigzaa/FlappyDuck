@@ -1,44 +1,49 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=6 format=2]
 
-[ext_resource path="res://Wall/wall.jpg" type="Texture" id=1]
+[ext_resource path="res://Wall/wall.png" type="Texture" id=1]
 [ext_resource path="res://Wall/Scripts/Obstacle.gd" type="Script" id=2]
 
 [sub_resource type="RectangleShape2D" id=1]
 extents = Vector2( 44, 242 )
 
+[sub_resource type="StreamTexture" id=3]
+flags = 4
+load_path = "res://.import/wall.png-f1af73b64ee5c388bc8d5a18fdca6330.stex"
+
 [sub_resource type="RectangleShape2D" id=2]
-extents = Vector2( 30, 60 )
+extents = Vector2( 30, 90 )
 
 [node name="Obstacle" type="Node2D"]
 script = ExtResource( 2 )
 
-[node name="UpperWall" type="StaticBody2D" parent="."]
-position = Vector2( 0, -10 )
+[node name="UpperWall" type="Area2D" parent="." groups=["coll", "tube"]]
 
 [node name="Sprite" type="Sprite" parent="UpperWall"]
+position = Vector2( 0, 20 )
 rotation = 3.14159
-scale = Vector2( 0.603936, 0.611893 )
+scale = Vector2( 1.68029, 1.70242 )
 texture = ExtResource( 1 )
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="UpperWall"]
 position = Vector2( 0, 1 )
 shape = SubResource( 1 )
 
-[node name="LowerWall" type="StaticBody2D" parent="."]
-position = Vector2( 0, 610 )
+[node name="UpperWall2" type="Area2D" parent="." groups=["coll", "tube"]]
+position = Vector2( 0, 700 )
 rotation = 3.14159
 
-[node name="Sprite" type="Sprite" parent="LowerWall"]
+[node name="Sprite" type="Sprite" parent="UpperWall2"]
+position = Vector2( 0, 20 )
 rotation = 3.14159
-scale = Vector2( 0.603936, 0.611893 )
-texture = ExtResource( 1 )
+scale = Vector2( 1.68029, 1.70242 )
+texture = SubResource( 3 )
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LowerWall"]
-position = Vector2( 1.74845e-07, 2 )
+[node name="CollisionShape2D" type="CollisionShape2D" parent="UpperWall2"]
+position = Vector2( 0, 1 )
 shape = SubResource( 1 )
 
-[node name="PointArea" type="Area2D" parent="."]
+[node name="PointArea" type="Area2D" parent="." groups=["coll", "point"]]
 
-[node name="PointBox" type="CollisionShape2D" parent="PointArea" groups=["point"]]
-position = Vector2( 0, 300 )
+[node name="PointBox" type="CollisionShape2D" parent="PointArea"]
+position = Vector2( 0, 350 )
 shape = SubResource( 2 )
